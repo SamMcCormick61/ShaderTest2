@@ -1,0 +1,11 @@
+2025-04-23  Streamlit Shader App Enhancements Log
+------------------------------------------------
+- Enabled dynamic upload of controls.json and fractal.html in streamlit_app.py
+- Implemented file_uploader widgets for JSON schema and HTML shader template
+- Extended injection logic to replace GLSL `const float` and JS `let` defaults based on sidebar values
+- Refactored regex replacements to use callable lambdas to avoid invalid backreference errors
+- Patched fractal.html: changed `in vec2 fragCoord` to `varying vec2 fragCoord` to fix GLSL compile
+- Added fire2.html (self-contained p5.js Fire shader demo) and fire2.json (controls schema)
+- Fixed p5.js demo by moving `createShader` call from preload() into setup() after WEBGL context exists
+------------------------------------------------
+End of log entry
