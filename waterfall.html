@@ -202,6 +202,26 @@ void main() {
       camera.updateProjectionMatrix();
       material.uniforms.iResolution.value.set(width, height);
     });
+    // WebSocket client for remote control
+    (function() {
+      var ws = new WebSocket("ws://localhost:8765/");
+      ws.onmessage = function(event) {
+        try {
+          var msg = JSON.parse(event.data);
+          if (material.uniforms[msg.type] !== undefined) {
+            material.uniforms[msg.type].value = msg.value;
+          }
+        } catch(e) {
+          console.error("WebSocket parse error:", e);
+        }
+      };
+      ws.onopen = function() {
+        console.log("WebSocket connection established");
+      };
+      ws.onerror = function(err) {
+        console.error("WebSocket error:", err);
+      };
+    })();
   </script>
 </body>
 </html>

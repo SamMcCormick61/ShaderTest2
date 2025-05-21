@@ -54,3 +54,43 @@ Please:
 
 Please walk me through the mapping of uniforms → widgets, let me confirm, then output the final `controls.json` and `shader.html` files.
 ```
+## Raspberry Pi Video Wall Setup
+
+To run the shader on a Raspberry Pi driving a video wall at 1028×1088 resolution:
+
+1. **Configure custom HDMI resolution**  
+   Edit `/boot/config.txt` on the Pi:
+   ```text
+   hdmi_force_hotplug=1
+   hdmi_group=2
+   hdmi_mode=87
+   hdmi_cvt=1028 1088 60 6 0 0 0
+   ```
+   Then reboot the Pi.
+
+2. **Serve the display HTML**  
+   From the project root on the Pi:
+   ```bash
+   python3 -m http.server 8000
+   ```
+
+3. **Start the WebSocket server**  
+   In a separate terminal:
+   ```bash
+   python3 ws_server.py
+   ```
+
+4. **Launch in kiosk mode**  
+   Use Chromium in kiosk mode:
+   ```bash
+   DISPLAY=:0 chromium-browser --kiosk --window-size=1028,1088 http://localhost:8000/waterfall.html
+   ```
+   (Replace with `fractal.html` if desired.)
+
+5. **Control via WebSocket**  
+- On your phone or remote machine, start the Streamlit app:
+  ```bash
+  streamlit run streamlit_app.py --server.address=0.0.0.0
+  ```
+- In the Streamlit sidebar, set the **WebSocket URI** to `ws://<pi-ip>:8765`.
+- Adjust shader controls; updates will stream to the Pi display in real time.
