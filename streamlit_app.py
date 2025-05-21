@@ -102,6 +102,19 @@ for ctrl in controls:
         val = default
     values[name] = val
 
+# WebSocket URI for remote display (separate control page)
+ws_uri = st.sidebar.text_input("WebSocket URI", "ws://localhost:8765")
+# Attempt to publish current control values to WS server
+try:
+    import asyncio, websockets
+    async def publish():
+        async with websockets.connect(ws_uri) as ws:
+            for name, val in values.items():
+                await ws.send(json.dumps({"type": name, "value": val}))
+    asyncio.run(publish())
+except Exception as e:
+    st.sidebar.warning(f"WebSocket publish failed: {e}")
+
 # Read and inject parameters into HTML (uploaded or local)
 html_content = None
 if html_uploader is not None:
