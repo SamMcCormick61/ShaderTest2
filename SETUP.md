@@ -53,25 +53,32 @@
     sudo reboot
     ```
 
- 2. **Serve HTML files**
+ 2. **(Optional) Create and activate a Python virtual environment**
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    ```
+
+ 3. **Serve HTML files**
     ```bash
     cd ShaderTest2
     python3 -m http.server 8000
     ```
 
- 3. **Start the WebSocket server**
+ 4. **Start the WebSocket server**
     In another terminal:
     ```bash
     python3 ws_server.py
     ```
 
- 4. **Launch in kiosk mode**
+ 5. **Launch in kiosk mode**
     ```bash
     DISPLAY=:0 chromium-browser --kiosk --window-size=1028,1088 http://localhost:8000/waterfall.html
     ```
     (or replace `waterfall.html` with `fractal.html`)
 
- 5. **Control via WebSocket**
+ 6. **Control via WebSocket**
     - On a remote machine (e.g., your phone or laptop), run the Streamlit app:
       ```bash
       streamlit run streamlit_app.py --server.address=0.0.0.0
