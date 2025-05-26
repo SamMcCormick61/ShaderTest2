@@ -210,7 +210,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     sparks = sparkLife * sparksGray * vec3(1.0, 0.3, 0.0);
   }
 
-  // DEBUG: show only fire color
   fragColor = vec4(max(fire, sparks) + smoke, 1.0);
 }
 
@@ -228,71 +227,26 @@ let fireShader;
 let fireHeight = 1.0;
 let centerPower = 1.0;
 let noiseScale = 0.01;
-// let colorPicker;  // removed in favor of WebSocket controls
+let colorPicker;
 
 function setup() {
   pixelDensity(1);
   createCanvas(windowWidth, windowHeight, WEBGL);
   noStroke();
-  // Removed local color picker; using WebSocket for remote control
+  // Color picker for fire color
+  colorPicker = createColorPicker('#ff7700');
+  colorPicker.position(10, 10);
   // Fetch shaders from DOM and initialize
   const vs = document.getElementById('vertexShader').textContent;
   const fs = document.getElementById('fragmentShader').textContent;
   fireShader = createShader(vs, fs);
-  // Default base color for initial render
-  fireShader.setUniform('u_fireColor', [1.0, 0.4, 0.0]);
-  // WebSocket client for remote control
-  const socket = new WebSocket('ws://' + location.hostname + ':8765');
-  socket.onopen = () => console.log(`WebSocket connected to ${socket.url}`);
-//----------------------------------------------------------------
-
-  socket.onmessage = (event) => {
-    console.log(`WebSocket message received: ${event.data}`);
-    try {
-      const msg = JSON.parse(event.data);
-      const type = msg.type;
-      const val = msg.value;
-      if (type === 'baseColor') {
-        // val expected as hex string, set fire color
-        const hex = val;
-        const r = parseInt(hex.slice(1,3), 16)/255.0;
-        const g = parseInt(hex.slice(3,5), 16)/255.0;
-        const b = parseInt(hex.slice(5,7), 16)/255.0;
-        fireShader.setUniform('u_fireColor', [r, g, b]);
- } else {
-          // numeric uniform (e.g. fireHeight, centerPower,    noiseScale)
-          fireShader.setUniform('u_' + type, val);
-          console.log('Uniform ' + type + ' set to ' + val);
-
-          if (type === 'fireHeight') {
-            fireHeight = val;
-          } else if (type === 'centerPower') {
-          centerPower = val;
-          } else if (type === 'noiseScale') {
-           noiseScale = val;
-         }
-
-          // Update local state so draw() doesn’t overwrite
-          if (type === 'fireHeight') {
-            fireHeight = val;
-          } else if (type === 'centerPower') {
-            centerPower = val;
-          } else if (type === 'noiseScale') {
-            noiseScale = val;
-          }
-        }
-    } catch(e) {
-      console.warn('WS message error', e);
-    }
-  };
 }
-
-//-------------------------------------------------
-
 
 function draw() {
   // Update time and uniforms
-  // fireColor is driven by WebSocket messages
+  // Pass selected fire color as RGB normalized
+  const col = colorPicker.color();
+  fireShader.setUniform('u_fireColor', [red(col)/255.0, green(col)/255.0, blue(col)/255.0]);
   fireShader.setUniform('u_time', millis() / 1000.0);
   fireShader.setUniform('u_resolution', [width, height]);
   fireShader.setUniform('u_mouse', [0.0, 0.0]);

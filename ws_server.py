@@ -11,15 +11,21 @@ clients = set()
 
 async def handler(websocket, path):
     # Register client
+    client_addr = websocket.remote_address
+    print(f"Client connected: {client_addr}")
     clients.add(websocket)
     try:
         async for message in websocket:
-            # Broadcast received message to all connected clients
+            print(f"Received message from {client_addr}: {message}")
             for client in clients:
                 if client.open:
                     await client.send(message)
+                    print(f"Broadcasted to {client.remote_address}: {message}")
+    except Exception as e:
+        print(f"Error with client {client_addr}: {e}")
     finally:
         clients.remove(websocket)
+        print(f"Client disconnected: {client_addr}")
 
 async def main():
     port = 8765

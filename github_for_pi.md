@@ -27,11 +27,11 @@ ls -al ~/.ssh
 
 Use the Ed25519 algorithm (recommended) or RSA if Ed25519 is unavailable:
 ```bash
-ssh-keygen -t ed25519 -C "your_email@example.com"
+ssh-keygen -t ed25519 -C "sam_github@sammccormick.co.uk"
 ```
 or
 ```bash
-ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+ssh-keygen -t rsa -b 4096 -C "sam_github@sammccormick.co.uk"
 ```
 
 - Press Enter to accept the default file location (e.g., `/home/pi/.ssh/id_ed25519`).
@@ -71,11 +71,12 @@ Hi username! You've successfully authenticated, but GitHub does not provide shel
 
 - Clone a repository:
   ```bash
-git clone git@github.com:username/repo.git
+git clone git@github.com:SamMcCormick61/ShaderTest2.git
+git clone -b ShaderTestPi1 git@github.com:SamMcCormick61/ShaderTest2.git
 ```
 - Or update an existing remote to SSH:
   ```bash
-git remote set-url origin git@github.com:username/repo.git
+git remote set-url origin git@github.com:SamMcCormick61/ShaderTest2.git
 ```
 
 You are now set up to use SSH with GitHub on your Raspberry Pi!

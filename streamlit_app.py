@@ -110,13 +110,25 @@ try:
     async def publish():
         async with websockets.connect(ws_uri) as ws:
             for name, val in values.items():
-                await ws.send(json.dumps({"type": name, "value": val}))
+                data = {"type": name, "value": val}
+                print(f"Publishing WS message: {data}")
+                await ws.send(json.dumps(data))
     asyncio.run(publish())
 except Exception as e:
     st.sidebar.warning(f"WebSocket publish failed: {e}")
 
 # Read and inject parameters into HTML (uploaded or local)
 html_content = None
+# Shader HTML selection
+html_files = [f.name for f in Path(__file__).parent.glob("*.html") if f.name not in ("streamlit_app.py",)]
+config_path = Path(__file__).parent / "config.json"
+if config_path.exists():
+    cfg = json.loads(config_path.read_text())
+    default_shader = cfg.get("default_shader", html_files[0] if html_files else None)
+else:
+    default_shader = html_files[0] if html_files else None
+shader_file = st.sidebar.selectbox("Shader HTML", html_files, index=html_files.index(default_shader) if default_shader in html_files else 0)
+# Allow uploading a custom HTML override
 if html_uploader is not None:
     try:
         html_content = html_uploader.getvalue().decode('utf-8')
@@ -124,9 +136,14 @@ if html_uploader is not None:
         st.error(f"Failed to read uploaded HTML: {e}")
         html_content = None
 else:
-    html_path = Path(__file__).parent / "fractal.html"
+    html_path = Path(__file__).parent / shader_file
     if html_path.exists():
         html_content = html_path.read_text()
+# Save default selection
+if st.sidebar.button("Save Default Shader"):
+    if html_files:
+        config_path.write_text(json.dumps({"default_shader": shader_file}, indent=2))
+        st.sidebar.success(f"Saved default shader '{shader_file}' to config.json")
 
 if html_content:
     # Inject control values into HTML (both GLSL consts and JS let declarations)
