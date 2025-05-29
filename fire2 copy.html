@@ -157,7 +157,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   float xpart = fragCoord.x / resolution.x;
   float ypart = fragCoord.y / resolution.y;
 
-  float clip = 210.0 * u_fireHeight;
+  float clip = u_fireHeight * u_resolution.y; // Adjusted clip calculation to use resolution.y
   float ypartClip = fragCoord.y / clip;
   float ypartClippedFalloff = clamp(2.0 - ypartClip, 0.0, 1.0);
   float ypartClipped = min(ypartClip, 1.0);
@@ -183,9 +183,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
   float flames = pow(ypartClipped, 0.3 * xfuel) * pow(noise, 0.3 * xfuel);
 
-  float f = ypartClippedFalloff * pow(1.0 - flames * flames * flames, 8.0);
+  float f = ypartClippedFalloff * pow(1.0 - flames * flames * flames, 2.0); // Reduced exponent to make fire visible
   float fff = f * f * f;
-  vec3 fire = u_fireColor * (1.5 * vec3(f, fff, fff * fff));
+  vec3 fire = u_fireColor * (1.5 * vec3(f, fff, fff * fff)); // Reverted to original multiplier and components
 
   float smokeNoise = 0.5 + snoise(0.4 * position + timing * vec3(1.0, 1.0, 0.2)) / 2.0;
   vec3 smoke = vec3(0.3 * pow(xfuel, 3.0) * pow(ypart, 2.0) * (smokeNoise + 0.4 * (1.0 - noise)));
@@ -210,6 +210,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     sparks = sparkLife * sparksGray * vec3(1.0, 0.3, 0.0);
   }
 
+  // DEBUG: show original fire, sparks, smoke
   fragColor = vec4(max(fire, sparks) + smoke, 1.0);
 }
 
@@ -225,10 +226,8 @@ void main() {
 // Shader and UI globals
 let fireShader;
 //let fireHeight = 5.0;
-//let centerPower = 0.2;
-//let noiseScale = 0.005;
-let colorPicker;
-
+//let centerPower = 1.0;
+//let noiseScale = 0.01;
 
 // fireHeight, centerPower, noiseScale will be injected by index.html
 // Function to convert hex to RGB (needed for initialFireColorHex)
@@ -239,7 +238,6 @@ function hexToRgb(hex) {
   return [r, g, b];
 }
 
-
 function setup() {
   const version = "fire2.html v1.1"; // Added version string
   const timestamp = new Date().toLocaleString(); // Current date and time
@@ -247,11 +245,6 @@ function setup() {
   pixelDensity(1);
   createCanvas(windowWidth, windowHeight, WEBGL);
   noStroke();
-
-    // Color picker for fire color
-  colorPicker = createColorPicker('#ff7700');
-  colorPicker.position(10, 10);
-
   // Removed local color picker; using WebSocket for remote control
   // Fetch shaders from DOM and initialize
   const vs = document.getElementById('vertexShader').textContent;
@@ -306,7 +299,7 @@ function setup() {
  } else {
           // numeric uniform (e.g. fireHeight, centerPower,    noiseScale)
           fireShader.setUniform('u_' + type, val);
-          console.log('fire2a.html: Uniform ' + type + ' set to ' + val);
+          console.log('fire2.html: Uniform ' + type + ' set to ' + val);
 
           // Update local state so draw() doesn’t overwrite (these are already updated by index.html)
           // This block is now redundant as draw() no longer uses these local variables for uniforms
@@ -326,18 +319,13 @@ function setup() {
 
 //-------------------------------------------------
 
+
 function draw() {
-  // Update time and uniforms
-  // Pass selected fire color as RGB normalized
-   console.log(`fire2.html: draw() called at ${new Date().toLocaleTimeString()}`);
-  const col = colorPicker.color();
-  fireShader.setUniform('u_fireColor', [red(col)/255.0, green(col)/255.0, blue(col)/255.0]);
+  // Update time and uniforms that are not driven by WebSocket messages
   fireShader.setUniform('u_time', millis() / 1000.0);
   fireShader.setUniform('u_resolution', [width, height]);
   fireShader.setUniform('u_mouse', [0.0, 0.0]);
-  fireShader.setUniform('u_fireHeight', fireHeight);
-  fireShader.setUniform('u_centerPower', centerPower);
-  fireShader.setUniform('u_noiseScale', noiseScale);
+  // Uniforms u_fireHeight, u_centerPower, u_noiseScale, u_fireColor are set in setup() or via WebSocket
   shader(fireShader);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
 }
@@ -364,3 +352,27 @@ function keyPressed() {
 </script>
 </body>
 </html>
+<environment_details>
+# VSCode Visible Files
+index.html
+
+# VSCode Open Tabs
+streamlit_app.py
+fire2.json
+fire2.html
+index.html
+config.json
+
+# Recently Modified Files
+These files have been modified since you last accessed them (file was just edited so you may need to re-read it before editing):
+index.html
+
+# Current Time
+5/27/2025, 11:09:21 PM (Europe/London, UTC+1:00)
+
+# Context Window Usage
+647,841 / 1,048.576K tokens used (62%)
+
+# Current Mode
+ACT MODE
+</environment_details>

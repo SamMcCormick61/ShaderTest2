@@ -1,0 +1,9 @@
+{
+  "default_shader": "fire2.html",
+  "values": {
+    "fireHeight": 8.5,
+    "centerPower": 0.2,
+    "noiseScale": 0.05,
+    "baseColor": "#ff0000"
+  }
+}

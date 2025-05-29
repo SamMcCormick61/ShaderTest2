@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shader Landing Page 1app.py and index.thtml</title>
+  <style>
+    body, html { margin:0; padding:0; height:100%; overflow:hidden; }
+    #shader-container { width:100%; height:100%; }
+    iframe { border:none; width:100%; height:100%; }
+  </style>
+</head>
+<body>
+  <div id="shader-container"></div>
+  <script>
+  (async function() {
+    try {
+      const version = "index.html v1.1"; // Added version string
+      const timestamp = new Date().toLocaleString(); // Current date and time
+      console.log(`${version}: Starting load process at ${timestamp}...`);
+      const config = await fetch('config.json').then(r => r.json());
+      console.log(`${version}: Loaded config.json:`, config);
+
+      const shaderFile = config.default_shader;
+      const values = config.values || {};
+      console.log('index.html: Default shader:', shaderFile, 'Values:', values);
+
+      const htmlText = await fetch(shaderFile).then(r => r.text());
+      let content = htmlText;
+      console.log(`index.html: Fetched ${shaderFile} content (first 200 chars):`, content.substring(0, 200));
+
+      // Fix WebSocket URL when using srcdoc: default hostname to 'localhost'
+      content = content.replace(/location\.hostname/g, '"localhost"');
+      console.log('index.html: Replaced location.hostname with "localhost"');
+
+      let injectedJs = ''; // To hold additional JS for injection
+
+for (const [name, val] of Object.entries(values)) {
+  let injectedName = name;
+  if (name === 'baseColor') {
+    injectedName = 'initialFireColorHex'; // Rename baseColor to initialFireColorHex for fire2.html
+  }
+  const valStr =
+    typeof val === 'string' && val.startsWith('#')
+      ? `"${val}"`
+      : Number.isInteger(val)
+      ? `${val}.0`
+      : val;
+
+  injectedJs += `let ${injectedName} = ${valStr};\n`;
+  console.log(`index.html: Injected let ${injectedName} with value ${valStr}`);
+
+  // Replace any “const float name = …;” in your GLSL
+  const constRegex = new RegExp(
+    `(const float ${name}\\s*=\\s*)([-+]?[0-9]*\\.?[0-9]+)(\\s*;)`,
+    'g'
+  );
+  content = content.replace(constRegex, `$1${valStr}$3`);
+}
+
+      // Inject the additional JS into the main script block of the HTML content
+      // Find the opening <script> tag of the main JS block and insert the injectedJs after it.
+      content = content.replace('<script>', `<script>\n${injectedJs}`);
+      // Log a larger portion of the content to verify injection
+      console.log('index.html: Injected additional JS. Final content (first 1000 chars):', content.substring(0, 1000));
+      // Check for a sample injected variable to confirm presence
+      console.log('index.html: Checking for fireHeight in final content:', content.includes('let fireHeight ='));
+
+      const iframe = document.createElement('iframe');
+      iframe.srcdoc = content;
+      document.getElementById('shader-container').appendChild(iframe);
+      console.log('index.html: Iframe created and appended.');
+
+    } catch (e) {
+      document.body.innerHTML = `<pre>Error loading shader: ${e}</pre>`;
+      console.error('index.html: Error during load process:', e);
+    }
+  })();
+  </script>
+</body>
+</html>

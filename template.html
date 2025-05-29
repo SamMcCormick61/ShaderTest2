@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Circle Shader</n+></head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+
+  <script id="frag" type="x-shader/x-fragment">
+precision mediump float;
+uniform float u_radius;
+uniform vec3 u_color;
+varying vec2 vTexCoord;
+void main() {
+    vec2 uv = vTexCoord * 2.0 - 1.0;
+    float d = length(uv);
+    if (d < u_radius) {
+        gl_FragColor = vec4(u_color, 1.0);
+    } else {
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    }
+}
+  </script>
+
+  <script>
+let shaderProgram;
+
+function setup() {
+    createCanvas(windowWidth, windowHeight, WEBGL);
+    shaderProgram = createShader(
+        `uniform mat4 projectionMatrix;
+        uniform mat4 modelViewMatrix;
+        attribute vec3 position;
+        varying vec2 vTexCoord;
+        void main() {
+            vTexCoord = (position.xy + vec2(1.0)) / 2.0;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+        document.getElementById('frag').textContent
+    );
+    shader(shaderProgram);
+    noStroke();
+    // default uniforms
+    shaderProgram.setUniform('u_radius', 0.5);
+    shaderProgram.setUniform('u_color', [1.0, 0.0, 0.0]);
+
+    // WebSocket connection to Raspberry Pi
+    const socket = new WebSocket('ws://192.168.1.222:8765');
+    socket.onopen = () => console.log('WebSocket connected');
+    socket.onmessage = e => {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'radius') {
+            shaderProgram.setUniform('u_radius', msg.value);
+        } else if (msg.type === 'color') {
+            let c = msg.value.startsWith('#') ? msg.value.substring(1) : msg.value;
+            let r = parseInt(c.substring(0, 2), 16) / 255;
+            let g = parseInt(c.substring(2, 4), 16) / 255;
+            let b = parseInt(c.substring(4, 6), 16) / 255;
+            shaderProgram.setUniform('u_color', [r, g, b]);
+        }
+    };
+}
+
+function draw() {
+    shader(shaderProgram);
+    quad(-1, -1, 1, -1, 1, 1, -1, 1);
+}
+
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+}
+  </script>
+</body>
+</html>

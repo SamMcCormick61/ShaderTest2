@@ -1,0 +1,19 @@
+[
+  {
+    "name": "radius",
+    "label": "Circle Radius",
+    "widget": "slider",
+    "type": "float",
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "default": 0.5
+  },
+  {
+    "name": "color",
+    "label": "Circle Color",
+    "widget": "color_picker",
+    "type": "str",
+    "default": "#ff0000"
+  }
+]
