@@ -2,7 +2,8 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Circle Shader</n+></head>
+  <title>Circle Shader</title>
+</head>
 <body>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
 
@@ -10,9 +11,11 @@
 precision mediump float;
 uniform float u_radius;
 uniform vec3 u_color;
-varying vec2 vTexCoord;
+uniform vec2 u_resolution;
 void main() {
-    vec2 uv = vTexCoord * 2.0 - 1.0;
+    // normalize pixel coordinates to [-1,1], preserving aspect ratio
+    vec2 uv = (gl_FragCoord.xy / u_resolution) * 2.0 - 1.0;
+    uv.x *= u_resolution.x / u_resolution.y;
     float d = length(uv);
     if (d < u_radius) {
         gl_FragColor = vec4(u_color, 1.0);
@@ -23,26 +26,38 @@ void main() {
   </script>
 
   <script>
+// Injected control variables: radius (float), color (hex string)
 let shaderProgram;
+// Helper: "#rrggbb" → normalized [r,g,b]
+function hexToRgb(hex) {
+    if (hex.charAt(0) === '#') hex = hex.substring(1);
+    return [
+        parseInt(hex.substr(0,2),16)/255,
+        parseInt(hex.substr(2,2),16)/255,
+        parseInt(hex.substr(4,2),16)/255
+    ];
+}
 
 function setup() {
     createCanvas(windowWidth, windowHeight, WEBGL);
     shaderProgram = createShader(
-        `uniform mat4 projectionMatrix;
-        uniform mat4 modelViewMatrix;
-        attribute vec3 position;
-        varying vec2 vTexCoord;
-        void main() {
-            vTexCoord = (position.xy + vec2(1.0)) / 2.0;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }`,
+        `attribute vec3 aPosition;
+         uniform mat4 uProjectionMatrix;
+         uniform mat4 uModelViewMatrix;
+         void main() {
+             gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+         }`,
         document.getElementById('frag').textContent
     );
     shader(shaderProgram);
     noStroke();
-    // default uniforms
-    shaderProgram.setUniform('u_radius', 0.5);
-    shaderProgram.setUniform('u_color', [1.0, 0.0, 0.0]);
+    // default uniforms: use injected radius and color
+    const initialRadius = (typeof radius !== 'undefined') ? radius : 0.5;
+    shaderProgram.setUniform('u_radius', initialRadius);
+    const initialColor = (typeof color === 'string') ? color : '#ff0000';
+    shaderProgram.setUniform('u_color', hexToRgb(initialColor));
+    // pass canvas resolution to shader
+    shaderProgram.setUniform('u_resolution', [width, height]);
 
     // WebSocket connection to Raspberry Pi
     const socket = new WebSocket('ws://192.168.1.222:8765');
@@ -62,12 +77,17 @@ function setup() {
 }
 
 function draw() {
+    // clear background, then render full-screen quad via a rectangle
+    background(0);
     shader(shaderProgram);
-    quad(-1, -1, 1, -1, 1, 1, -1, 1);
+    // draw a rectangle covering the entire canvas in WEBGL mode
+    rect(-width/2, -height/2, width, height);
 }
 
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
+    // update resolution uniform on resize
+    shaderProgram.setUniform('u_resolution', [width, height]);
 }
   </script>
 </body>

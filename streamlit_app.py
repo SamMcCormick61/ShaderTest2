@@ -6,16 +6,16 @@ import streamlit.components.v1 as components
 import asyncio
 import websockets
 
-st.title("Interactive Shader Demo")
-st.write("This Streamlit app embeds a WebGL shader demo (Three.js & GLSL). Use sidebar controls or upload files to set parameters.")
+# The main area (title/description) appears only when 'Show Shader Preview' is checked
+# st.title and st.write will be shown in the preview block below
+
 # -- Dynamic file uploads: allow user to override controls schema or shader HTML
-st.sidebar.header("Upload Shader Files")
-json_uploader = st.sidebar.file_uploader("Upload controls.json", type=["json"])
-html_uploader = st.sidebar.file_uploader("Upload fractal.html", type=["html", "htm"])
+json_uploader = None
+html_uploader = None
 
 # WebSocket URI input
 # Load default from config.json if available
-config_path = Path(__file__).parent / "config.json" # Redefine config_path here for scope
+config_path = Path(__file__).parent / "config.json"
 if config_path.exists():
     cfg = json.loads(config_path.read_text())
     default_ws_uri = cfg.get("websocket_uri", "ws://localhost:8765")
@@ -23,28 +23,51 @@ else:
     default_ws_uri = "ws://localhost:8765"
 websocket_uri = st.sidebar.text_input("WebSocket URI", value=default_ws_uri)
 
-"""
-Load & embed the fractal.html demo, injecting parameters via controls.json.
-"""
+# ----------------------------------------------------------------------
+# Optional preview toggle (default OFF)
+show_preview = st.sidebar.checkbox("Show Shader Preview", value=False)
+# ----------------------------------------------------------------------
+# Hide or show the main content area via CSS
+if not show_preview:
+    # Show only the sidebar and hide all other content
+    st.markdown(
+        """
+        <style>
+        /* Hide all direct children of the app container except the sidebar */
+        [data-testid="stAppViewContainer"] > *:not([data-testid="stSidebar"]) {
+            display: none !important;
+        }
+        /* Expand the sidebar to full width */
+        [data-testid="stSidebar"] {
+            width: 100% !important;
+        }
+        </style>
+        """, unsafe_allow_html=True
+    )
+
+# Show title and description only when preview is enabled
+if show_preview:
+    st.title("Interactive Shader Demo")
+    st.write(
+        "This Streamlit app embeds a WebGL shader demo (Three.js & GLSL). "
+        "Use sidebar controls or upload files to set parameters."
+    )
 
 
-# Read and inject parameters into HTML (uploaded or local)
 html_content = None
-controls = [] # Initialize controls to an empty list
-# Shader HTML selection
+controls = []
 html_files = [
-    f.name
-    for f in Path(__file__).parent.glob("*.html")
+    f.name for f in Path(__file__).parent.glob("*.html")
     if f.name not in ("streamlit_app.py", "index.html")
 ]
-# config_path = Path(__file__).parent / "config.json" # Already defined above
 if config_path.exists():
     cfg = json.loads(config_path.read_text())
     default_shader = cfg.get("default_shader", html_files[0] if html_files else None)
 else:
     default_shader = html_files[0] if html_files else None
+
 shader_file = st.sidebar.selectbox("Shader HTML", html_files, index=html_files.index(default_shader) if default_shader in html_files else 0)
-# Allow uploading a custom HTML override
+
 if html_uploader is not None:
     try:
         html_content = html_uploader.getvalue().decode('utf-8')
@@ -55,7 +78,6 @@ else:
     html_path = Path(__file__).parent / shader_file
     if html_path.exists():
         html_content = html_path.read_text()
-# Load control schema based on selected shader
         schema_path = Path(__file__).parent / f"{Path(shader_file).stem}.json"
         if json_uploader is not None:
             try:
@@ -71,7 +93,6 @@ else:
                 st.error(f"Failed to load {schema_path.name}: {e}")
                 controls = []
         else:
-            # fallback to controls.json
             fallback = Path(__file__).parent / "controls.json"
             try:
                 controls = json.loads(fallback.read_text())
@@ -79,7 +100,6 @@ else:
                 st.error(f"Failed to load controls.json: {e}")
                 controls = []
 
-        # Create sidebar widgets dynamically
         st.sidebar.header("Shader Controls")
         values = {}
         for ctrl in controls:
@@ -91,41 +111,16 @@ else:
 
             if widget_type == "slider":
                 if dtype == "float":
-                    val = st.sidebar.slider(
-                        label,
-                        min_value=ctrl.get("min", 0.0),
-                        max_value=ctrl.get("max", 1.0),
-                        value=default,
-                        step=ctrl.get("step", 0.01),
-                    )
+                    val = st.sidebar.slider(label, min_value=ctrl.get("min", 0.0), max_value=ctrl.get("max", 1.0), value=default, step=ctrl.get("step", 0.01))
                 elif dtype == "int":
-                    val = st.sidebar.slider(
-                        label,
-                        min_value=int(ctrl.get("min", 0)),
-                        max_value=int(ctrl.get("max", 10)),
-                        value=int(default),
-                        step=1,
-                    )
+                    val = st.sidebar.slider(label, min_value=int(ctrl.get("min", 0)), max_value=int(ctrl.get("max", 10)), value=int(default), step=1)
                 else:
                     val = default
             elif widget_type == "number_input":
                 if dtype == "float":
-                    val = st.sidebar.number_input(
-                        label,
-                        min_value=ctrl.get("min", None),
-                        max_value=ctrl.get("max", None),
-                        value=default,
-                        step=ctrl.get("step", None),
-                    )
+                    val = st.sidebar.number_input(label, min_value=ctrl.get("min", None), max_value=ctrl.get("max", None), value=default, step=ctrl.get("step", None))
                 elif dtype == "int":
-                    val = st.sidebar.number_input(
-                        label,
-                        min_value=int(ctrl.get("min", 0)),
-                        max_value=int(ctrl.get("max", 10)),
-                        value=int(default),
-                        step=int(ctrl.get("step", 1)),
-                    )
-                    
+                    val = st.sidebar.number_input(label, min_value=int(ctrl.get("min", 0)), max_value=int(ctrl.get("max", 10)), value=int(default), step=int(ctrl.get("step", 1)))
                 else:
                     val = default
             elif widget_type == "selectbox":
@@ -167,11 +162,15 @@ async def send_ws_message(message):
     if st.session_state.ws_connected and st.session_state.ws_client:
         try:
             await st.session_state.ws_client.send(json.dumps(message))
-            # st.sidebar.info(f"Sent: {message['type']} = {message['value']}") # Too verbose
         except Exception as e:
             st.sidebar.error(f"Error sending WS message: {e}")
             st.session_state.ws_connected = False
             st.session_state.ws_client = None
+
+# Manual reconnect button
+if st.sidebar.button("Reconnect WebSocket"):
+    st.session_state.ws_connected = False
+    st.session_state.ws_client = None
 
 # Connect to WebSocket if not already connected
 if not st.session_state.ws_connected:
@@ -184,67 +183,53 @@ if st.session_state.ws_connected:
             message = {"type": "baseColor", "value": val}
         else:
             message = {"type": name, "value": val}
-        asyncio.run(send_ws_message(message)) # This might block briefly
-
+        asyncio.run(send_ws_message(message))
 
 # Save default selection
 if st.sidebar.button("Save Default Shader"):
-    # Load existing config.json if present, else start fresh
-    if config_path.exists():
-        try:
-            cfg = json.loads(config_path.read_text())
-        except Exception:
-            cfg = {}
-    else:
-        cfg = {}
-    cfg["default_shader"] = shader_file
-    # Preserve existing values if present; otherwise initialize with current values
-    cfg.setdefault("values", values)
+    # Update config.json to point at new default shader
+    cfg = {"default_shader": shader_file}
     config_path.write_text(json.dumps(cfg, indent=2))
     st.sidebar.success(f"Saved default shader '{shader_file}' to config.json")
 
-# Save current control values
-if st.sidebar.button("Save Control Values"):
-    # Load existing config.json if present, else start fresh
-    if config_path.exists():
-        try:
-            cfg = json.loads(config_path.read_text())
-        except Exception:
-            cfg = {}
-    else:
-        cfg = {}
-    cfg["values"] = values
-    # Update default_shader to current selection
-    cfg["default_shader"] = shader_file
-    # Save WebSocket URI
-    cfg["websocket_uri"] = websocket_uri
-    config_path.write_text(json.dumps(cfg, indent=2))
-    st.sidebar.success("Saved control values to config.json")
+    # Update schema defaults for this shader
+    schema_path = Path(__file__).parent / f"{Path(shader_file).stem}.json"
+    try:
+        for ctrl in controls:
+            name = ctrl.get("name")
+            if name in values:
+                ctrl["default"] = values[name]
+        schema_path.write_text(json.dumps(controls, indent=2))
+        st.sidebar.success(f"Updated default values in {schema_path.name}")
+    except Exception as e:
+        st.sidebar.error(f"Failed to update schema {schema_path.name}: {e}")
 
-if html_content:
-    # Inject control values into HTML (both GLSL consts and JS let declarations)
-    for ctrl in controls:
-        name = ctrl["name"]
-        dtype = ctrl.get("type")
-        # get sidebar value for this control
-        val = values.get(name)
-        # Format numeric literal: ints get .0 suffix
-        val_str = f"{val}.0" if dtype == "int" else f"{val}"
-        # 1) Replace GLSL const float definitions
-        const_pattern = rf"(const float {name}\s*=\s*)([-+]?[0-9]*\.?[0-9]+)(\s*;)"
-        # Replace GLSL const and JS let via a callable to avoid backreference ambiguity
-        html_content = re.sub(
-            const_pattern,
-            lambda m, val_str=val_str: m.group(1) + val_str + m.group(3),
-            html_content
-        )
-        # 2) Replace JS let initialization (e.g. let fireHeight = 1.0;)
-        let_pattern = rf"(let\s+{name}\s*=\s*)([-+]?[0-9]*\.?[0-9]+)(\s*;)"
-        html_content = re.sub(
-            let_pattern,
-            lambda m, val_str=val_str: m.group(1) + val_str + m.group(3),
-            html_content
-        )
-    components.html(html_content, height=800, scrolling=True)
-else:
-    st.error("Could not find or read 'fractal.html'. Please ensure it exists or upload one.")
+    # Notify connected clients (including index.html) to reload
+    if st.session_state.ws_connected:
+        asyncio.run(send_ws_message({"type": "__reload__", "value": ""}))
+
+
+    
+# Render the shader preview (or error) only when 'Show Shader Preview' is checked
+if show_preview:
+    if html_content:
+        for ctrl in controls:
+            name = ctrl["name"]
+            dtype = ctrl.get("type")
+            val = values.get(name)
+            val_str = f"{val}.0" if dtype == "int" else f"{val}"
+            const_pattern = rf"(const float {name}\s*=\s*)([-+]?[0-9]*\.?[0-9]+)(\s*;)"
+            html_content = re.sub(
+                const_pattern,
+                lambda m, val_str=val_str: m.group(1) + val_str + m.group(3),
+                html_content
+            )
+            let_pattern = rf"(let\s+{name}\s*=\s*)([-+]?[0-9]*\.?[0-9]+)(\s*;)"
+            html_content = re.sub(
+                let_pattern,
+                lambda m, val_str=val_str: m.group(1) + val_str + m.group(3),
+                html_content
+            )
+        components.html(html_content, height=800, scrolling=True)
+    else:
+        st.error(f"Could not find shader file: {shader_file}")

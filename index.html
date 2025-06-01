@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Shader Landing Page 1app.py and index.thtml</title>
+  <title>Shader Landing Page 1.py and index.thtml</title>
   <style>
     body, html { margin:0; padding:0; height:100%; overflow:hidden; }
     #shader-container { width:100%; height:100%; }
@@ -17,14 +17,32 @@
       const version = "index.html v1.1"; // Added version string
       const timestamp = new Date().toLocaleString(); // Current date and time
       console.log(`${version}: Starting load process at ${timestamp}...`);
-      const config = await fetch('config.json').then(r => r.json());
+      // Cache-busting fetch to ensure latest config
+      const now = Date.now();
+      const config = await fetch(`config.json?_=${now}`, { cache: 'no-store' }).then(r => r.json());
       console.log(`${version}: Loaded config.json:`, config);
 
       const shaderFile = config.default_shader;
-      const values = config.values || {};
-      console.log('index.html: Default shader:', shaderFile, 'Values:', values);
+      console.log('index.html: Default shader:', shaderFile);
+      // Load default values from shader-specific schema JSON
+      let values = {};
+      const schemaFile = shaderFile.replace(/\.html?$/, '') + '.json';
+      try {
+        // Cache-busting fetch to ensure latest schema
+        const schema = await fetch(`${schemaFile}?_=${now}`, { cache: 'no-store' }).then(r => r.json());
+        console.log(`index.html: Loaded schema ${schemaFile}:`, schema);
+        for (const ctrl of schema) {
+          values[ctrl.name] = ctrl.default;
+        }
+        console.log('index.html: Default values from schema:', values);
+      } catch (e) {
+        console.warn(`index.html: Could not load schema ${schemaFile}, falling back to config values`, e);
+        values = config.values || {};
+        console.log('index.html: Fallback values from config:', values);
+      }
 
-      const htmlText = await fetch(shaderFile).then(r => r.text());
+      // Cache-busting fetch to ensure latest shader HTML
+      const htmlText = await fetch(`${shaderFile}?_=${now}`, { cache: 'no-store' }).then(r => r.text());
       let content = htmlText;
       console.log(`index.html: Fetched ${shaderFile} content (first 200 chars):`, content.substring(0, 200));
 
@@ -57,9 +75,21 @@ for (const [name, val] of Object.entries(values)) {
   content = content.replace(constRegex, `$1${valStr}$3`);
 }
 
-      // Inject the additional JS into the main script block of the HTML content
-      // Find the opening <script> tag of the main JS block and insert the injectedJs after it.
-      content = content.replace('<script>', `<script>\n${injectedJs}`);
+      // Inject the additional JS into the appropriate injection point
+      const injectMarker = '// fireHeight, centerPower, noiseScale will be injected by index.html';
+      if (content.includes(injectMarker)) {
+        // insert injection before the specific marker comment in the JS block
+        content = content.replace(
+          injectMarker,
+          `${injectedJs}${injectMarker}`
+        );
+      } else {
+        // fallback: inject at first <script> tag
+        content = content.replace(
+          '<script>',
+          `<script>\n${injectedJs}`
+        );
+      }
       // Log a larger portion of the content to verify injection
       console.log('index.html: Injected additional JS. Final content (first 1000 chars):', content.substring(0, 1000));
       // Check for a sample injected variable to confirm presence
@@ -69,6 +99,24 @@ for (const [name, val] of Object.entries(values)) {
       iframe.srcdoc = content;
       document.getElementById('shader-container').appendChild(iframe);
       console.log('index.html: Iframe created and appended.');
+      // WebSocket reload listener: reload index.html on default_shader change
+      try {
+        const reloadWs = new WebSocket('ws://' + location.hostname + ':8765');
+        reloadWs.onopen = () => console.log('index.html: WS connected for reloads');
+        reloadWs.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === '__reload__') {
+              console.log('index.html: reload command received');
+              window.location.reload();
+            }
+          } catch (err) {
+            console.error('index.html: WS reload message parse error', err);
+          }
+        };
+      } catch (wsErr) {
+        console.error('index.html: Failed to connect reload WS', wsErr);
+      }
 
     } catch (e) {
       document.body.innerHTML = `<pre>Error loading shader: ${e}</pre>`;

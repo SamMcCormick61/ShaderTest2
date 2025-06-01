@@ -1,0 +1,35 @@
+diff --git a/streamlit_app.py b/streamlit_app.py
+index 0000000..1111111 100644
+--- a/streamlit_app.py
++++ b/streamlit_app.py
+@@ -1,6 +1,10 @@
+ websocket_uri = st.sidebar.text_input("WebSocket URI", value=default_ws_uri)
+ 
++# ------------------------------------------------------------------------------
++# Optional preview toggle (default OFF)
++show_preview = st.sidebar.checkbox("Show Shader Preview", value=False)
++#------------------------------------------------------------------------------
++
+ # Reconnect button to manually re-establish WS if it drops
+-if not st.session_state.ws_connected:
++if st.sidebar.button("Reconnect WebSocket"):
++    st.session_state.ws_connected = False
++    st.session_state.ws_client = None
++
++# Connect to WebSocket if not already connected
++if not st.session_state.ws_connected:
+     asyncio.run(connect_ws(websocket_uri))
+ 
+@@ -30,7 +36,9 @@
+-# Inject control values into HTML (both GLSL consts and JS let declarations)
++if show_preview:
++    # Inject control values into HTML (both GLSL consts and JS let declarations)
+     for ctrl in controls:
+         name = ctrl["name"]
+         dtype = ctrl.get("type")
+@@ -42,7 +50,9 @@
+-    components.html(html_content, height=800, scrolling=True)
++    # Only render preview when toggled on
++    components.html(html_content, height=800, scrolling=True)
+ else:
+-    st.error("Could not find or read 'fractal.html'. Please ensure it exis

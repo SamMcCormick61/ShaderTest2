@@ -54,9 +54,13 @@
         var geometry = new THREE.PlaneBufferGeometry(2 * aspectRatio, 2);
         var material = new THREE.ShaderMaterial({
             uniforms: {
-                iTime: { value: 1.0 },
-                iResolution: { value: new THREE.Vector2(width, height) },
-                iMouse: { value: new THREE.Vector2(0.0, 0.0) },
+                iTime:          { value: 0.0 },
+                iResolution:    { value: new THREE.Vector2(width, height) },
+                iMouse:         { value: new THREE.Vector2(0.0, 0.0) },
+                // Control uniforms (from fractal.json)
+                uvFractalScale: { value: 1.25 },
+                uvOffset:       { value: 0.5 },
+                iterations:     { value: 4.0 },
             },
             vertexShader: `
 uniform vec2 iResolution;
@@ -70,16 +74,17 @@ void main() {
 // adapted from https://www.shadertoy.com/view/mtyGWy
 uniform float iTime;
 uniform vec2 iMouse;
+// Control uniforms
+uniform float uvFractalScale;
+uniform float uvOffset;
+uniform float iterations;
 varying vec2 fragCoord;
 const vec3 col1 = vec3(0.2, 0.3, 0.2);
 const vec3 col2 = vec3(0.2, 0.2, 0.5);
 const vec3 col3 = vec3(0.263, 0.416, 0.557);
 const vec3 col_base = vec3(1.0, 1.0, 1.0);
 const float e = 21.28318;
-const float iterations = 4.0;
 const float speed = 0.7;
-	const float uvFractalScale = 1.25;
-const float uvOffset = 0.5;
 const float colorMultiplier = 0.1;
 const float sinFrequency = 5.0;
 const float sinScale = 1.0 / 8.0;
@@ -133,6 +138,26 @@ void main() {
             var y = event.clientY - rect.top;
             material.uniforms['iMouse'].value.set(x, rect.height - y);
         });
+        // WebSocket client for remote control
+        (function() {
+            var ws = new WebSocket("ws://localhost:8765/");
+            ws.onmessage = function(event) {
+                try {
+                    var msg = JSON.parse(event.data);
+                    if (material.uniforms[msg.type] !== undefined) {
+                        material.uniforms[msg.type].value = msg.value;
+                    }
+                } catch(e) {
+                    console.error("WebSocket parse error:", e);
+                }
+            };
+            ws.onopen = function() {
+                console.log("WebSocket connection established");
+            };
+            ws.onerror = function(err) {
+                console.error("WebSocket error:", err);
+            };
+        })();
     </script>
 </body>
 </html>

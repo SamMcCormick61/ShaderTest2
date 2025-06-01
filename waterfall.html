@@ -41,10 +41,19 @@
     // Shader material
     var material = new THREE.ShaderMaterial({
       uniforms: {
-        iTime:       { value: 0.0 },
-        iResolution: { value: new THREE.Vector2(width, height) },
-        iChannel0:   { value: noiseTex },
-        iChannel1:   { value: bgTex }
+        iTime:            { value: 0.0 },
+        iResolution:      { value: new THREE.Vector2(width, height) },
+        iChannel0:        { value: noiseTex },
+        iChannel1:        { value: bgTex },
+        // Control uniforms (from waterfall.json)
+        flowScale:        { value: 0.03 },
+        scrollSpeed:      { value: 0.01 },
+        flowmapStrength:  { value: 0.006 },
+        timeMultiplier:   { value: 0.8 },
+        radialScale:      { value: 0.01 },
+        radialTimeOffset: { value: 0.002 },
+        bottomWidth:      { value: 0.2 },
+        topWidth:         { value: 0.6 }
       },
       vertexShader: `
         void main() {
@@ -59,6 +68,15 @@ uniform vec3 iResolution;
 uniform float iTime;
 uniform sampler2D iChannel0;
 uniform sampler2D iChannel1;
+// Control uniforms
+uniform float flowScale;
+uniform float scrollSpeed;
+uniform float flowmapStrength;
+uniform float timeMultiplier;
+uniform float radialScale;
+uniform float radialTimeOffset;
+uniform float bottomWidth;
+uniform float topWidth;
 
 // blend mode
 vec3 screen_blend(vec3 s, vec3 d) {
@@ -69,10 +87,9 @@ vec3 screen_blend(vec3 s, vec3 d) {
 float get_mask(vec2 uv) {
   uv.x *= iResolution.x / iResolution.y;
   uv.x = abs(uv.x);
-  // Updated to match reference and widened for a broader waterfall
-  const float innerWidth = 0.094;
-  // widened to 3x the previous width for a broader waterfall
-  const float outerWidth = 0.562;
+  // Use dynamic widths from uniforms
+  float innerWidth = bottomWidth;
+  float outerWidth = topWidth;
   return clamp(1.0 - smoothstep(innerWidth, outerWidth, uv.x), 0.0, 1.0);
 }
 
@@ -103,11 +120,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   uv.x = uv.x * 2.0 - 1.0;
 
   // flow UV/noise (using normalized coords to avoid seam)
-  vec2 flowUV = uv0 * 0.03 + vec2(0.0, iTime * 0.01);
+  vec2 flowUV = uv0 * flowScale + vec2(0.0, iTime * scrollSpeed);
   float noise = fbm(iChannel0, flowUV);
-  vec2 flowmap = vec2(0.0, smoothstep(0.2, 1.0, noise)) * 0.006;
+  vec2 flowmap = vec2(0.0, smoothstep(0.2, 1.0, noise)) * flowmapStrength;
   float weightA, weightB;
-  float t = iTime * 0.8;
+  float t = iTime * timeMultiplier;
   vec2 uvA = flow(flowUV, flowmap, 0.0, t, weightA);
   vec2 uvB = flow(flowUV, flowmap, 0.5, t, weightB);
   float flowA = fbm(iChannel0, uvA) * weightA;
