@@ -1,0 +1,60 @@
+    1  xrandr
+    2  cat a1.txt
+    3  xrandr --output XWAYLAND0 --mode "1024x1088_60.00"
+    4  systemctl status lightdm.service
+    5  ls -l /dev/dri
+    6  xrandr
+    7  sudo nano a1.txt
+    8  sudo nano /boot/firmware/config.txt
+    9  sudo reboot
+   10  xrandr
+   11  ls -l /dev/dri
+   12  xrandr
+   13  sudo apt update
+   14  sudo apt install x11 -utils
+   15  sudo apt update
+   16  sudo apt upgrade
+   17  killall lxsession
+   18  sudo systemctl restart lightdm
+   19  sudo nano /etc/lightdm/lightdm.conf
+   20  sudo systemctl restart lightdm
+   21  sudo nano /etc/lightdm/lightdm.conf
+   22  sudo systemctl restart lightdm
+   23  sudo nano /etc/lightdm/lightdm.conf
+   24  sudo systemctl restart lightdm
+   25  sudo nano /etc/lightdm/lightdm.conf
+   26  sudo systemctl restart lightdm
+   27  sudo nano /etc/lightdm/lightdm.conf
+   28  sudo systemctl restart lightdm
+   29  sudo nano /etc/lightdm/lightdm.conf
+   30  sudo systemctl restart lightdm
+   31  sudo nano /etc/lightdm/lightdm.conf
+   32  sudo systemctl restart lightdm
+   33  sudo reboot
+   34  xrandr
+   35  sudo apt install x11-utils
+   36  cvt 1024 1088 60 -r
+   37  /usr/bin/cvt 1024 1088 60 -
+   38  gtf 1024 1088 60 + stereo 0 | grep Modelin
+   39  sudo nano  a1.txt
+   40  sudo reboot
+   41  cvt
+   42  gtf
+   43  gtf 1024 1088 60 -x | grep Modeline
+   44  xrandr
+   45  cat a1.txt
+   46  xrandr --newmode "1024x1088_60.00"  92.96  1024 1088 1200 1376  1088 1089 1092 1126  -HSync +Vsync
+   47  xrandr --addmode HDMI-1 "1024x1088_60.00"
+   48  xrandr --output HDMI-1 --mode "1024x1088_60.00"
+   49  xrandr
+   50  history
+   51  sudo nano /etc/lightdm/lightdm.conf
+   52  sudo cp /boot/firmware/config.txt /boot/firmware/config.txt.bak
+   53  sudo reboot
+   54  sudo cp /boot/firmware/config.txt /boot/firmware/config1.txt.bak
+   55  sudo nano /etc/lightdm/lightdm.conf
+   56  sudo cp  /etc/lightdm/lightdm.conf /home/sam/lightdm.conf.bak
+   57  ls
+   58  sudo cp /boot/firmware/config.txt boot_firmware_config.txt.bak
+   59  history
+   60  history >history_1024x1088.txt
