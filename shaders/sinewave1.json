@@ -1,0 +1,32 @@
+[
+  {
+    "name": "wavesCount",
+    "label": "Number of Waves",
+    "widget": "slider",
+    "type": "int",
+    "min": 1,
+    "max": 20,
+    "step": 1,
+    "default": 6
+  },
+  {
+    "name": "speed",
+    "label": "Wave Speed",
+    "widget": "slider",
+    "type": "float",
+    "min": 0.0,
+    "max": 10.0,
+    "step": 0.1,
+    "default": 1.0
+  },
+  {
+    "name": "height",
+    "label": "Wave Height",
+    "widget": "slider",
+    "type": "float",
+    "min": 0.0,
+    "max": 10.0,
+    "step": 0.1,
+    "default": 4.0
+  }
+]

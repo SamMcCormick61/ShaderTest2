@@ -9,7 +9,7 @@ import websockets
 
 clients = set()
 
-async def handler(websocket, path):
+async def handler(websocket, path=None):
     # Register client
     client_addr = websocket.remote_address
     print(f"Client connected: {client_addr}")
@@ -17,10 +17,13 @@ async def handler(websocket, path):
     try:
         async for message in websocket:
             print(f"Received message from {client_addr}: {message}")
-            for client in clients:
-                if client.open:
+            for client in list(clients):
+                try:
                     await client.send(message)
                     print(f"Broadcasted to {client.remote_address}: {message}")
+                except Exception as e:
+                    print(f"Error sending to {client.remote_address}: {e}")
+                    clients.discard(client)
     except Exception as e:
         print(f"Error with client {client_addr}: {e}")
     finally:

@@ -46,11 +46,12 @@
       let content = htmlText;
       console.log(`index.html: Fetched ${shaderFile} content (first 200 chars):`, content.substring(0, 200));
 
-      // Fix WebSocket URL when using srcdoc: default hostname to 'localhost'
-      content = content.replace(/location\.hostname/g, '"localhost"');
-      console.log('index.html: Replaced location.hostname with "localhost"');
-
-      let injectedJs = ''; // To hold additional JS for injection
+      // Fix WebSocket URL when using srcdoc: use parent document's hostname
+      content = content.replace(/location\.hostname/g, 'window.parent.location.hostname');
+      console.log('index.html: Replaced location.hostname with window.parent.location.hostname');
+       console.log( window.parent.location.hostname);
+      // Initial injection: log the parent hostname inside the iframe context
+      let injectedJs = `console.log("iframe: parent hostname =", window.parent.location.hostname);\n`; // To hold additional JS for injection
 
 for (const [name, val] of Object.entries(values)) {
   let injectedName = name;

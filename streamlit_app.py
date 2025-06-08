@@ -56,9 +56,11 @@ if show_preview:
 
 html_content = None
 controls = []
+base_dir = Path(__file__).parent
+shader_dir = base_dir / "shaders"
 html_files = [
-    f.name for f in Path(__file__).parent.glob("*.html")
-    if f.name not in ("streamlit_app.py", "index.html")
+    str(f.relative_to(base_dir))
+    for f in shader_dir.glob("*.html")
 ]
 if config_path.exists():
     cfg = json.loads(config_path.read_text())
@@ -75,10 +77,10 @@ if html_uploader is not None:
         st.error(f"Failed to read uploaded HTML: {e}")
         html_content = None
 else:
-    html_path = Path(__file__).parent / shader_file
+    html_path = base_dir / shader_file
     if html_path.exists():
         html_content = html_path.read_text()
-        schema_path = Path(__file__).parent / f"{Path(shader_file).stem}.json"
+        schema_path = base_dir / Path(shader_file).with_suffix(".json")
         if json_uploader is not None:
             try:
                 raw = json_uploader.getvalue().decode("utf-8")
@@ -193,7 +195,7 @@ if st.sidebar.button("Save Default Shader"):
     st.sidebar.success(f"Saved default shader '{shader_file}' to config.json")
 
     # Update schema defaults for this shader
-    schema_path = Path(__file__).parent / f"{Path(shader_file).stem}.json"
+    schema_path = base_dir / Path(shader_file).with_suffix(".json")
     try:
         for ctrl in controls:
             name = ctrl.get("name")

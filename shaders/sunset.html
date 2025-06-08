@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Sunset Shader</title>
+  <style>
+    body { margin:0; overflow:hidden; }
+    canvas { display:block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    (function() {
+      var width = window.innerWidth, height = window.innerHeight;
+      var scene = new THREE.Scene();
+      var camera = new THREE.OrthographicCamera(-1,1,1,-1,-1,1);
+      var renderer = new THREE.WebGLRenderer();
+      renderer.setSize(width, height);
+      document.body.appendChild(renderer.domElement);
+      var clock = new THREE.Clock();
+      var uniforms = {
+        iTime: { value: 0.0 },
+        iResolution: { value: new THREE.Vector2(width, height) },
+        BRIGHTNESS: { value: 1.0 },
+        COLOR_BASE: { value: 1.5 },
+        COLOR_SPEED: { value: 0.5 },
+        COLOR_WAVE: { value: 14.0 },
+        STEPS: { value: 100.0 },
+        WAVE_STEPS: { value: 8.0 },
+        WAVE_FREQ: { value: 5.0 },
+        WAVE_AMP: { value: 0.6 },
+        WAVE_EXP: { value: 1.8 },
+        PASSTHROUGH: { value: 0.2 },
+        SOFTNESS: { value: 0.005 },
+        SKY: { value: 10.0 },
+        FOV: { value: 1.0 },
+        RGB: { value: new THREE.Vector3(0.0, 1.0, 2.0) },
+        COLOR_DOT: { value: new THREE.Vector3(1.0, -1.0, 0.0) },
+        WAVE_VELOCITY: { value: new THREE.Vector3(0.2, 0.2, 0.2) }
+      };
+      var material = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        vertexShader: `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`,
+        fragmentShader: `
+precision highp float;
+uniform float iTime;
+uniform vec2 iResolution;
+uniform float BRIGHTNESS;
+uniform float COLOR_BASE;
+uniform float COLOR_SPEED;
+uniform float COLOR_WAVE;
+uniform float STEPS;
+uniform float WAVE_STEPS;
+uniform float WAVE_FREQ;
+uniform float WAVE_AMP;
+uniform float WAVE_EXP;
+uniform float PASSTHROUGH;
+uniform float SOFTNESS;
+uniform float SKY;
+uniform float FOV;
+uniform vec3 RGB;
+uniform vec3 COLOR_DOT;
+uniform vec3 WAVE_VELOCITY;
+varying vec2 vUv;
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+  float z = 0.0;
+  float d = 0.0;
+  float s = 0.0;
+  vec3 dir = normalize(vec3(2.0 * fragCoord - iResolution.xy, -FOV * iResolution.y));
+  vec3 col = vec3(0.0);
+  for (float i = 0.0; i < STEPS; i++) {
+    vec3 p = z * dir;
+    for (float j = 0.0, f = WAVE_FREQ; j < WAVE_STEPS; j++, f *= WAVE_EXP) {
+      p += WAVE_AMP * sin(p * f - WAVE_VELOCITY * iTime).yzx / f;
+    }
+    s = 0.3 - abs(p.y);
+    d = SOFTNESS + max(s, -s * PASSTHROUGH) / 4.0;
+    z += d;
+    float phase = COLOR_WAVE * s + dot(p, COLOR_DOT) + COLOR_SPEED * iTime;
+    col += (cos(phase - RGB) + COLOR_BASE) * exp(s * SKY) / d;
+  }
+  col *= SOFTNESS / STEPS * BRIGHTNESS;
+  fragColor = vec4(tanh(col * col), 1.0);
+}
+
+void main() {
+  vec2 fragCoord = vUv * iResolution;
+  mainImage(gl_FragColor, fragCoord);
+}`
+      });
+      var geometry = new THREE.PlaneBufferGeometry(2, 2);
+      var mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+      function onResize() {
+        width = window.innerWidth; height = window.innerHeight;
+        renderer.setSize(width, height);
+        uniforms.iResolution.value.set(width, height);
+      }
+      window.addEventListener('resize', onResize);
+      function animate() {
+        uniforms.iTime.value = clock.getElapsedTime();
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }
+      animate();
+      var host = window.parent.location.hostname;
+      var ws = new WebSocket('ws://' + host + ':8765/');
+      ws.onmessage = function(evt) {
+        var msg = JSON.parse(evt.data);
+        if (uniforms[msg.type] !== undefined) {
+          var u = uniforms[msg.type];
+          if (u.value && u.value.set && Array.isArray(msg.value)) {
+            u.value.set(msg.value);
+          } else {
+            u.value = msg.value;
+          }
+        }
+      };
+    })();
+  </script>
+</body>
+</html>

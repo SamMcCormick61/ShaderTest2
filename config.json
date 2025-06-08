@@ -1,5 +1,5 @@
 {
-  "default_shader": "fire2.html",
+  "default_shader": "shaders/fire2.html",
   "values": {
     "fireHeight": 8.5,
     "centerPower": 0.2,

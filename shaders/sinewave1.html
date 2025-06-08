@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Sine Wave Shader</title>
+</head>
+<body>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+  (function() {
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+    var scene = new THREE.Scene();
+    var camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
+    var renderer = new THREE.WebGLRenderer();
+    renderer.setSize(width, height);
+    document.body.appendChild(renderer.domElement);
+    var clock = new THREE.Clock();
+    var uniforms = {
+      iTime:       { value: 0.0 },
+      iResolution: { value: new THREE.Vector2(width, height) },
+      wavesCount:  { value: 6.0 },
+      speed:       { value: 1.0 },
+      height:      { value: 4.0 }
+    };
+    var material = new THREE.ShaderMaterial({
+      uniforms: uniforms,
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        #define S smoothstep
+        precision mediump float;
+        uniform float iTime;
+        uniform vec2 iResolution;
+        uniform float wavesCount;
+        uniform float speed;
+        uniform float height;
+        varying vec2 vUv;
+
+        vec4 Line(vec2 uv, float speed, float height, vec3 col) {
+            uv.y += S(1.0, 0.0, abs(uv.x)) * sin(iTime * speed + uv.x * height) * 0.4;
+            return vec4(S(0.06 * S(0.2, 0.9, abs(uv.x)), 0.0, abs(uv.y) - 0.004) * col, 1.0) * S(1.0, 0.3, abs(uv.x));
+        }
+
+        void mainImage(out vec4 O, in vec2 I) {
+            vec2 uv = (I - 0.5 * iResolution.xy) / iResolution.y;
+            O = vec4(0.0);
+            int count = int(wavesCount + 0.5);
+            float denom = max(wavesCount - 1.0, 1.0);
+        for (int i = 0; i < count; i++) {
+            float t = float(i) / denom;
+            O += Line(uv, speed + t, height + t, vec3(0.2 + t * 0.7, 0.2 + t * 0.4, 0.3));
+        }
+        }
+
+        void main() {
+            mainImage(gl_FragColor, vUv * iResolution);
+        }
+      `
+    });
+    var geometry = new THREE.PlaneBufferGeometry(2, 2);
+    var mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+    function onResize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      renderer.setSize(width, height);
+      uniforms.iResolution.value.set(width, height);
+    }
+    window.addEventListener('resize', onResize);
+    function animate() {
+      uniforms.iTime.value = clock.getElapsedTime();
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    animate();
+    var host = window.parent.location.hostname;
+    var ws = new WebSocket('ws://' + host + ':8765/');
+    ws.onmessage = function(evt) {
+      var msg = JSON.parse(evt.data);
+      if (msg.type === 'wavesCount') {
+        uniforms.wavesCount.value = msg.value;
+      } else if (msg.type === 'speed') {
+        uniforms.speed.value = msg.value;
+      } else if (msg.type === 'height') {
+        uniforms.height.value = msg.value;
+      }
+    };
+  })();
+  </script>
+</body>
+</html>
